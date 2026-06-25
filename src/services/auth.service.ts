@@ -503,7 +503,7 @@ export class AuthService {
           <p><strong>This link will expire in 1 hour.</strong></p>
           <p>If you didn't request this, please ignore this email.</p>
           <div class="footer">
-            <p>Simple Shop Team</p>
+            <p>MyStore Team</p>
           </div>
         </div>
       </body>
@@ -512,9 +512,9 @@ export class AuthService {
 
     // Send email
     await transporter.sendMail({
-      from: `"Simple Shop" <${process.env.EMAIL_USER}>`,
+      from: `"MyStore" <${process.env.EMAIL_USER}>`,
       to,
-      subject: "Password Reset Request - Simple Shop",
+      subject: "Password Reset Request - MyStore",
       html,
     });
   }

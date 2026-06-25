@@ -99,7 +99,7 @@ app.use(
   "/api/docs",
   swaggerUi.serve,
   swaggerUi.setup(specs, {
-    customSiteTitle: "Simple Shop API Docs",
+    customSiteTitle: "MyStore API Docs",
     customCss: ".swagger-ui .topbar { display: none }",
   }),
 );
@@ -128,7 +128,7 @@ app.get("/", (_req: Request, res: Response) => {
   res.json({
     success: true,
     data: {
-      name: "Simple Shop API",
+      name: "MyStore API",
       version: "1.0.0",
       status: "running",
       endpoints: {
@@ -144,7 +144,7 @@ app.get("/", (_req: Request, res: Response) => {
       documentation: "/api/docs",
       documentationJSON: "/api/docs.json",
     },
-    message: "Welcome to Simple Shop API",
+    message: "Welcome to MyStore API",
   });
 });
 

@@ -1,4 +1,4 @@
-# Simple Shop Backend - Complete Documentation
+# MyStore Backend - Complete Documentation
 
 ## Quick Links
 
@@ -13,7 +13,7 @@
 
 ## Project Overview
 
-**Simple Shop** is a production-ready e-commerce backend built with Express.js, MongoDB, and Stripe payment processing. Designed for security, observability, and scalability.
+**MyStore** is a production-ready e-commerce backend built with Express.js, MongoDB, and Stripe payment processing. Designed for security, observability, and scalability.
 
 **Key Features:**
 - 🔒 Secure payment processing with Stripe webhook verification

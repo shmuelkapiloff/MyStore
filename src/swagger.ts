@@ -1,5 +1,5 @@
 /**
- * OpenAPI / Swagger Configuration for Simple Shop Backend
+ * OpenAPI / Swagger Configuration for MyStore Backend
  *
  * This file defines the FULL OpenAPI 3.0 specification inline
  * (no reliance on JSDoc scanning).
@@ -54,13 +54,13 @@ const badRequest400 = errorResponse(400, "Bad request / validation error");
 const definition = {
   openapi: "3.0.0",
   info: {
-    title: "Simple Shop Backend API",
+    title: "MyStore Backend API",
     description:
       "Production-ready e-commerce backend with Stripe payment processing, MongoDB transactions, and Redis caching.",
     version: "1.0.0",
     contact: {
-      name: "Simple Shop Team",
-      url: "https://github.com/simple-shop",
+      name: "MyStore Team",
+      url: "https://github.com/my-store",
     },
   },
   servers: [
