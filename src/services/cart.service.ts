@@ -80,9 +80,43 @@ export class CartService {
     const cart = await CartModel.findOne({ userId }).populate("items.product");
     if (!cart) return null;
 
-    const obj = cart.toObject();
+    const obj = cart.toObject() as any;
+
+    // When a product is deleted from the DB, populate() sets item.product = null.
+    // Filter those orphaned items and persist the cleanup so they don't accumulate.
+    const validItems = obj.items.filter((item: any) => item.product != null);
+
+    if (validItems.length < obj.items.length) {
+      logger.warn(
+        { userId, removed: obj.items.length - validItems.length },
+        "Cart contained orphaned product references (product deleted) — cleaning up",
+      );
+
+      const total = validItems.reduce((sum: number, item: any) => {
+        const price = item.lockedPrice ?? item.product?.price ?? 0;
+        return sum + price * item.quantity;
+      }, 0);
+
+      await CartModel.updateOne(
+        { userId },
+        {
+          $set: {
+            items: validItems.map((item: any) => ({
+              product: item.product._id,
+              quantity: item.quantity,
+              lockedPrice: item.lockedPrice ?? null,
+            })),
+            total,
+          },
+        },
+      );
+
+      obj.items = validItems;
+      obj.total = total;
+    }
+
     await this.cacheSet(this.cacheKey(userId), obj);
-    return obj;
+    return obj as ICart;
   }
 
   // ── Public API ────────────────────────────────────────────────────────
@@ -187,11 +221,8 @@ export class CartService {
     // Save to MongoDB (source of truth)
     await cart.save();
 
-    // The pre-save hook already populated items.product to calculate total.
-    // Reuse the in-memory populated document instead of a redundant DB round-trip.
-    const cartObj = cart.toObject();
-    await this.cacheSet(this.cacheKey(userId), cartObj);
-    return cartObj as ICart;
+    // Populate and cache so the response always includes full product objects.
+    return (await this.fetchAndCache(userId))!;
   }
 
   /** Remove item from cart */
@@ -207,9 +238,7 @@ export class CartService {
     ) as any;
 
     await cart.save();
-    const cartObj = cart.toObject();
-    await this.cacheSet(this.cacheKey(userId), cartObj);
-    return cartObj as ICart;
+    return (await this.fetchAndCache(userId))!;
   }
 
   /** Update item quantity */
@@ -246,9 +275,7 @@ export class CartService {
 
     cart.items[idx].quantity = quantity;
     await cart.save();
-    const cartObj = cart.toObject();
-    await this.cacheSet(this.cacheKey(userId), cartObj);
-    return cartObj as ICart;
+    return (await this.fetchAndCache(userId))!;
   }
 
   /** Clear cart */
