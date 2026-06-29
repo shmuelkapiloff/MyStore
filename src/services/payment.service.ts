@@ -71,7 +71,6 @@
 import { Request } from "express";
 import { PaymentModel, PaymentStatus } from "../models/payment.model";
 import { OrderModel } from "../models/order.model";
-import { CartModel } from "../models/cart.model";
 import { ProductModel } from "../models/product.model";
 import { WebhookEventModel } from "../models/webhook-event.model";
 import { PaymentProvider } from "./payments/payment.provider";
@@ -665,101 +664,20 @@ export class PaymentService {
           // 🔄 Transaction auto-aborts on error
           await session.abortTransaction().catch(() => undefined);
 
-          const txnUnsupported =
-            fulfillmentError?.message &&
-            fulfillmentError.message.includes(
-              "Transaction numbers are only allowed on a replica set member or mongos",
-            );
+          log.error(
+            "❌ Order fulfillment failed - transaction aborted, stock NOT reduced",
+            {
+              service: "PaymentService",
+              orderId: order._id,
+              error: fulfillmentError.message,
+            },
+          );
 
-          if (txnUnsupported) {
-            log.warn(
-              "⚠️ MongoDB transactions unsupported (standalone). Falling back to non-transactional fulfillment.",
-              {
-                service: "PaymentService",
-                orderId: order._id,
-                orderNumber: order.orderNumber,
-              },
-            );
+          order.status = "pending";
+          order.notes = `Fulfillment failed: ${fulfillmentError.message}`;
+          await order.save();
 
-            try {
-              let totalStockReduced = 0;
-
-              for (const item of order.items) {
-                const product = await ProductModel.findByIdAndUpdate(
-                  item.product,
-                  { $inc: { stock: -item.quantity } },
-                  { new: true },
-                );
-
-                if (!product) {
-                  throw new Error(`Product ${item.product} not found`);
-                }
-
-                if (product.stock < 0) {
-                  throw new Error(
-                    `Insufficient stock for ${item.name}: needed ${item.quantity}, had ${product.stock + item.quantity}`,
-                  );
-                }
-
-                totalStockReduced += item.quantity;
-              }
-
-              // 🧹 Clear cart (Redis + MongoDB)
-              await CartService.clearCart(order.user.toString());
-
-              order.fulfilled = true;
-              order.fulfilledAt = new Date();
-              await order.save();
-
-              log.info(
-                "✅ Order fulfillment successful - non-transactional fallback",
-                {
-                  service: "PaymentService",
-                  orderId: order._id,
-                  orderNumber: order.orderNumber,
-                  amount: order.totalAmount,
-                  totalStockReduced,
-                },
-              );
-
-              const duration = Date.now() - webhookStartTime;
-              PaymentMetricsService.recordPaymentSuccess(
-                order._id.toString(),
-                order.totalAmount,
-                duration,
-              );
-
-              // Don't return early — fall through to record idempotency event
-            } catch (fallbackError: any) {
-              log.error("❌ Fallback fulfillment failed", {
-                service: "PaymentService",
-                orderId: order._id,
-                error: fallbackError.message,
-              });
-
-              order.status = "pending";
-              order.notes = `Fulfillment failed (no transactions): ${fallbackError.message}`;
-              await order.save();
-
-              throw fallbackError;
-            }
-          } else {
-            log.error(
-              "❌ Order fulfillment failed - transaction aborted, stock NOT reduced",
-              {
-                service: "PaymentService",
-                orderId: order._id,
-                error: fulfillmentError.message,
-              },
-            );
-
-            // ⚠️ Mark order as needing manual review
-            order.status = "pending";
-            order.notes = `Fulfillment failed: ${fulfillmentError.message}. Payment succeeded but stock/cart not updated due to transaction rollback.`;
-            await order.save();
-
-            throw fulfillmentError;
-          }
+          throw fulfillmentError;
         } finally {
           await session.endSession();
         }
@@ -807,45 +725,4 @@ export class PaymentService {
     return { ok: true, eventType: result.status };
   }
 
-  /**
-   * Confirm payment - called by webhook when Stripe confirms payment
-   * ✅ This is the CRITICAL method that updates order status!
-   */
-  static async confirmPayment(paymentIntentId: string) {
-    // 1. Find order by payment intent ID
-    const order = await OrderModel.findOne({ paymentIntentId });
-    if (!order) {
-      throw new Error("Order not found for this payment");
-    }
-
-    // 2. ✅ Update order status to "confirmed"
-    order.paymentStatus = "paid";
-    order.status = "confirmed";
-    order.paymentVerifiedAt = new Date();
-    await order.save();
-
-    // 3. 🔴 NOW reduce stock (only after payment confirmed!)
-    for (const item of order.items) {
-      const product = await ProductModel.findById(item.product);
-      if (product) {
-        product.stock -= item.quantity;
-        await product.save();
-      }
-    }
-
-    // 4. 🧹 NOW clear the cart
-    await CartModel.findOneAndUpdate(
-      { userId: order.user },
-      { items: [], total: 0 },
-    );
-
-    // 5. Update payment record
-    const payment = await PaymentModel.findOneAndUpdate(
-      { order: order._id },
-      { status: "succeeded" },
-      { new: true },
-    );
-
-    return { order, payment };
-  }
 }
