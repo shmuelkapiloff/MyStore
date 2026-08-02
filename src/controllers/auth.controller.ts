@@ -15,10 +15,10 @@ import {
   UnauthorizedError,
 } from "../utils/asyncHandler";
 
-// קונטרולר שמטפל בכל הפעולות הקשורות להזדהות ולחשבון המשתמש
+// Handles all authentication and account operations
 export class AuthController {
   /** POST /api/auth/google */
-  // התחברות או הרשמה אוטומטית באמצעות חשבון Google
+  // Login or auto-register via Google account
   static googleLogin = asyncHandler(async (req: Request, res: Response) => {
     const { idToken } = req.body;
     if (!idToken) {
@@ -26,15 +26,15 @@ export class AuthController {
         .status(400)
         .json({ success: false, message: "Google idToken is required" });
     }
-    // אימות וקישור/יצירת משתמש
+    // Verify Google token and find or create user
     const user = await findOrCreateGoogleUser(idToken);
-    // בדיקת משתמש חסום/לא פעיל
+    // Reject blocked or inactive users
     if (!user || user.isActive === false) {
       return res
         .status(403)
         .json({ success: false, message: "User is blocked or inactive" });
     }
-    // יצירת JWT פנימי
+    // Issue our own JWT (decouples further requests from Google)
     const token = AuthService.createToken(user._id, user.tokenVersion);
     const refreshToken = AuthService.createRefreshToken(
       user._id,
@@ -51,7 +51,7 @@ export class AuthController {
     });
   });
   /** POST /api/auth/register */
-  // רישום משתמש חדש למערכת
+  // Register a new user
   static register = asyncHandler(async (req: Request, res: Response) => {
     const validated = registerSchema.parse(req.body);
     const result = await AuthService.register(validated);
@@ -63,7 +63,7 @@ export class AuthController {
   });
 
   /** POST /api/auth/login */
-  // התחברות משתמש קיים וקבלת טוקנים (token + refreshToken)
+  // Authenticate user and return token + refreshToken
   static login = asyncHandler(async (req: Request, res: Response) => {
     const validated = loginSchema.parse(req.body);
     const result = await AuthService.login(validated);
@@ -75,7 +75,7 @@ export class AuthController {
   });
 
   /** POST /api/auth/forgot-password */
-  // טיפול בבקשת "שכחתי סיסמה" - שולח למשתמש קישור או הוראות לאיפוס
+  // Initiates password reset — sends the user a reset link or instructions
   static forgotPassword = asyncHandler(async (req: Request, res: Response) => {
     const validated = forgotPasswordSchema.parse(req.body);
     const result = await AuthService.forgotPassword(validated.email);
@@ -83,7 +83,7 @@ export class AuthController {
   });
 
   /** GET /api/auth/verify */
-  // בודק שהטוקן שנשלח בכותרת הבקשה תקף, ומחזיר את פרטי המשתמש המשויך לו
+  // Validates the token in the Authorization header and returns the associated user
   static verify = asyncHandler(async (req: Request, res: Response) => {
     const token = req.headers.authorization?.replace("Bearer ", "");
     if (!token) throw new UnauthorizedError("No token provided");
@@ -92,7 +92,7 @@ export class AuthController {
   });
 
   /** GET /api/auth/profile */
-  // מחזיר את פרטי הפרופיל של המשתמש המחובר כרגע
+  // Returns the profile of the currently authenticated user
   static getProfile = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.userId;
     if (!userId) throw new UnauthorizedError();
@@ -101,7 +101,7 @@ export class AuthController {
   });
 
   /** PUT /api/auth/profile */
-  // מעדכן את פרטי הפרופיל של המשתמש המחובר
+  // Updates the profile of the authenticated user
   static updateProfile = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.userId;
     const validated = updateProfileSchema.parse(req.body);
@@ -115,7 +115,7 @@ export class AuthController {
   });
 
   /** POST /api/auth/reset-password/:token */
-  // מאפס את הסיסמה של המשתמש בעזרת טוקן חד-פעמי שהתקבל (למשל במייל)
+  // Resets the user's password using a one-time token (e.g. received via email)
   static resetPassword = asyncHandler(async (req: Request, res: Response) => {
     const { token } = req.params;
     const validated = resetPasswordSchema.parse(req.body);
@@ -125,7 +125,7 @@ export class AuthController {
   });
 
   /** POST /api/auth/refresh */
-  // מנפיק טוקן גישה (access token) חדש בעזרת refresh token, בלי לדרוש התחברות מחדש
+  // Issues a new access token from a valid refresh token, without re-login
   static refreshToken = asyncHandler(async (req: Request, res: Response) => {
     const { refreshToken } = req.body;
     if (!refreshToken) {
@@ -143,7 +143,7 @@ export class AuthController {
   });
 
   /** POST /api/auth/logout */
-  // מתנתק מהמערכת ומבטל את הטוקן הנוכחי של המשתמש
+  // Logs out the user and invalidates the current token (increments tokenVersion)
   static logout = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.userId;
     if (!userId) throw new UnauthorizedError();
@@ -152,7 +152,7 @@ export class AuthController {
   });
 
   /** POST /api/auth/change-password */
-  // משנה את סיסמת המשתמש המחובר, לאחר אימות הסיסמה הנוכחית
+  // Changes the authenticated user's password after verifying the current one
   static changePassword = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.userId;
     const validated = changePasswordSchema.parse(req.body);

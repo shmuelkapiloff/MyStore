@@ -4,11 +4,11 @@ import { z } from "zod";
 const israeliPhoneRegex = /^(\+972|0)([23489]|5[0-9])[0-9]{7}$/;
 
 /**
- * Address = "כרטיס משלוח" מלא
- * כולל את כל המידע הדרוש לשליח: שם מקבל, טלפון, כתובת
+ * Address schema — full shipping card
+ * Contains all information needed for delivery: recipient name, phone, address
  */
 export const addressSchema = z.object({
-  // פרטי איש קשר - חובה!
+  // Contact details
   fullName: z
     .string()
     
@@ -21,7 +21,7 @@ export const addressSchema = z.object({
       "Please provide a valid Israeli phone number (e.g., 0501234567)",
     ),
 
-  // פרטי כתובת
+  // Address fields
   street: z.string().min(1, "Street is required"),
   city: z.string().min(1, "City is required"),
   postalCode: z.string().min(1, "Postal code is required"),

@@ -6,7 +6,7 @@ import {
 } from "../validators/address.validator";
 import { asyncHandler, UnauthorizedError } from "../utils/asyncHandler";
 
-// DTO for address creation — "כרטיס משלוח" מלא
+// DTO for address creation — full shipping card
 export interface CreateAddressDTO {
   fullName: string;
   phone: string;
@@ -17,9 +17,9 @@ export interface CreateAddressDTO {
   isDefault?: boolean;
 }
 
-// קונטרולר שמטפל בכל הפעולות על כתובות המשתמש: קבלה, יצירה, עדכון, מחיקה והגדרת כתובת ברירת מחדל
+// Handles all address operations: list, create, update, delete, and set default
 export class AddressController {
-  // מחזיר את כל הכתובות השמורות של המשתמש המחובר
+  // Returns all saved addresses for the authenticated user
   static getAddresses = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?._id;
     if (!userId) throw new UnauthorizedError();
@@ -27,7 +27,7 @@ export class AddressController {
     res.status(200).json({ success: true, data: addresses });
   });
 
-  // מחזיר את כתובת ברירת המחדל שהמשתמש הגדיר
+  // Returns the user's default address
   static getDefaultAddress = asyncHandler(
     async (req: Request, res: Response) => {
       const userId = req.user?._id;
@@ -37,7 +37,7 @@ export class AddressController {
     },
   );
 
-  // מסמן כתובת קיימת כברירת המחדל החדשה של המשתמש
+  // Marks an existing address as the user's new default
   static setDefaultAddress = asyncHandler(
     async (req: Request, res: Response) => {
       const userId = req.user?._id;
@@ -52,7 +52,7 @@ export class AddressController {
     },
   );
 
-  // מחזיר כתובת ספציפית של המשתמש לפי המזהה שלה
+  // Returns a specific address by ID, scoped to the authenticated user
   static getAddressById = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?._id;
     const { addressId } = req.params;
@@ -61,11 +61,11 @@ export class AddressController {
     res.status(200).json({ success: true, data: address });
   });
 
-  // יוצר כתובת חדשה למשתמש, אחרי בדיקת תקינות הנתונים שנשלחו
+  // Creates a new address for the user after schema validation
   static createAddress = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?._id;
     if (!userId) throw new UnauthorizedError();
-    // בדיקת תקינות הנתונים מול הסכמה (schema) שהוגדרה לכתובת
+    // Validate request body against the address schema
     const validated: CreateAddressDTO = addressSchema.parse(req.body);
     const address = await AddressService.createAddress(userId, validated);
     res.status(201).json({
@@ -75,7 +75,7 @@ export class AddressController {
     });
   });
 
-  // מעדכן פרטים של כתובת קיימת של המשתמש
+  // Updates fields of an existing address belonging to the user
   static updateAddress = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?._id;
     const { addressId } = req.params;
@@ -93,7 +93,7 @@ export class AddressController {
     });
   });
 
-  // מוחק כתובת קיימת של המשתמש
+  // Deletes an existing address belonging to the user
   static deleteAddress = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?._id;
     const { addressId } = req.params;

@@ -27,7 +27,7 @@ export async function findOrCreateGoogleUser(idToken: string) {
   const payload = await verifyGoogleToken(idToken);
   let user = await getUserByEmail(payload.email!);
   if (user) {
-    // קישור googleId אם לא קיים
+    // Link googleId if the user registered via email first
     if (!user.googleId) {
       user = await updateUserGoogleId(user._id, payload.sub!);
     }

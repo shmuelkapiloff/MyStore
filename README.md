@@ -214,6 +214,7 @@ GET    /api/products/categories/list - List available categories
 
 ```
 GET    /api/cart              - Get current user's cart
+GET    /api/cart/count        - Get total item count (for cart icon badge)
 POST   /api/cart/add          - Add item to cart
 PUT    /api/cart/update       - Update item quantity
 DELETE /api/cart/remove       - Remove item from cart
@@ -240,11 +241,15 @@ POST   /api/payments/webhook        - Receive Stripe webhooks (⚠️ Signed)
 ### Admin Endpoints (Requires Admin Role)
 
 ```
-GET    /api/admin/users       - List all users
-GET    /api/admin/orders      - List all orders
-POST   /api/admin/products    - Create product
-PUT    /api/admin/products/:id - Update product
-DELETE /api/admin/products/:id - Delete product
+GET    /api/admin/products           - List all products (including inactive)
+POST   /api/admin/products           - Create product
+PUT    /api/admin/products/:id       - Update product
+DELETE /api/admin/products/:id       - Soft-delete product
+GET    /api/admin/users              - List all users (paginated)
+PUT    /api/admin/users/:id/role     - Update user role
+GET    /api/admin/orders             - List all orders
+PUT    /api/admin/orders/:id/status  - Update order status
+GET    /api/admin/stats/summary      - Dashboard statistics
 ```
 
 **Full API Reference:** [API_REFERENCE.md](./docs/technical/API_REFERENCE.md)
@@ -364,10 +369,7 @@ GET /metrics
 ### Health Checks
 
 ```bash
-# Basic health
-GET /health
-
-# API health (dependencies)
+# API health (dependencies: MongoDB, Redis, webhooks)
 GET /api/health
 
 # Fast ping
@@ -612,7 +614,7 @@ db.webhookEvents.createIndex({ createdAt: 1 }, { expireAfterSeconds: 2592000 })
 - [x] Webhook signature verification
 - [x] Amount verification
 - [x] MongoDB transactions for atomicity
-- [x] JWT token expiry (15 minutes)
+- [x] JWT token expiry (7 days access token + tokenVersion for instant revocation)
 - [x] Refresh token rotation
 - [x] Structured logging for audit
 - [ ] WAF deployed (infrastructure level)
@@ -630,7 +632,7 @@ db.webhookEvents.createIndex({ createdAt: 1 }, { expireAfterSeconds: 2592000 })
 
 ### Payment Processing
 
-> "Payment security has five layers: webhook signature verification (HMAC-SHA256), idempotency tracking (event ID deduplication), amount verification (database vs. webhook), atomic transactions (all-or-nothing stock reduction), and retry logic with exponential backoff. If any layer fails, subsequent layers catch it."
+> "Payment security has four layers: webhook signature verification (HMAC-SHA256), idempotency tracking (event ID deduplication), amount verification (database vs. webhook), and atomic MongoDB transactions (all-or-nothing stock reduction). Each layer catches a different class of attack — if one fails, the next catches it."
 
 ### Scaling
 
@@ -699,6 +701,6 @@ MIT License - See LICENSE file
 
 ---
 
-**Last Updated:** 2024-01-28
+**Last Updated:** 2026-06-30
 **Maintained By:** [Your Team]
 **Next Review:** 2024-02-28

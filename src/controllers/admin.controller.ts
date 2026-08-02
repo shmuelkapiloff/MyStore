@@ -2,10 +2,10 @@ import { Request, Response } from "express";
 import { AdminService } from "../services/admin.service";
 import { asyncHandler } from "../utils/asyncHandler";
 
-// קונטרולר לניהול המערכת על ידי מנהלים: ניהול מוצרים, משתמשים, הזמנות וצפייה בסטטיסטיקות
+// Admin-only controller: product management, user management, orders, and stats
 export class AdminController {
   // Products
-  // מחזיר רשימת כל המוצרים בקטלוג, כולל מוצרים לא פעילים אם התבקש
+  // Returns all products in the catalog, including inactive ones if requested
   static listProducts = asyncHandler(async (req: Request, res: Response) => {
     const includeInactive =
       req.query.includeInactive === "false" ? false : true;
@@ -13,19 +13,19 @@ export class AdminController {
     res.json({ success: true, data: { products } });
   });
 
-  // יוצר מוצר חדש בקטלוג
+  // Creates a new product in the catalog
   static createProduct = asyncHandler(async (req: Request, res: Response) => {
     const product = await AdminService.createProduct(req.body);
     res.status(201).json({ success: true, data: { product } });
   });
 
-  // מעדכן פרטים של מוצר קיים לפי המזהה שלו
+  // Updates an existing product by ID
   static updateProduct = asyncHandler(async (req: Request, res: Response) => {
     const product = await AdminService.updateProduct(req.params.id, req.body);
     res.json({ success: true, data: { product } });
   });
 
-  // מבטל מוצר (מחיקה רכה) - המוצר לא נמחק בפועל, רק מסומן כלא פעיל
+  // Soft-deletes a product — marks it inactive without removing from DB
   static deleteProduct = asyncHandler(async (req: Request, res: Response) => {
     const product = await AdminService.deleteProduct(req.params.id);
     res.json({
@@ -36,7 +36,7 @@ export class AdminController {
   });
 
   // Users
-  // מחזיר רשימת משתמשים עם תמיכה בדפדוף (pagination) לפי עמוד וכמות לעמוד
+  // Returns paginated list of users
   static listUsers = asyncHandler(async (req: Request, res: Response) => {
     const page = parseInt((req.query.page as string) || "1", 10);
     const limit = parseInt((req.query.limit as string) || "20", 10);
@@ -44,7 +44,7 @@ export class AdminController {
     res.json({ success: true, data: users });
   });
 
-  // מעדכן את התפקיד (role) של משתמש מסוים, למשל הפיכתו למנהל
+  // Updates a user's role (e.g. promote to admin)
   static updateUserRole = asyncHandler(async (req: Request, res: Response) => {
     const actingUserId = req.userId;
     const { id } = req.params;
@@ -55,7 +55,7 @@ export class AdminController {
   });
 
   // Orders
-  // מחזיר רשימת הזמנות, עם אפשרות לסנן לפי סטטוס או לפי משתמש מסוים
+  // Returns orders, optionally filtered by status or userId
   static listOrders = asyncHandler(async (req: Request, res: Response) => {
     const { status, userId } = req.query;
     const orders = await AdminService.listOrders(
@@ -65,7 +65,7 @@ export class AdminController {
     res.json({ success: true, data: { orders } });
   });
 
-  // מעדכן את סטטוס ההזמנה (למשל: נשלחה, נמסרה) ומוסיף הודעה נלווית
+  // Updates order status (e.g. shipped, delivered) with an optional message
   static updateOrderStatus = asyncHandler(
     async (req: Request, res: Response) => {
       const { id } = req.params;
@@ -77,7 +77,7 @@ export class AdminController {
   );
 
   // Stats
-  // מחזיר סיכום סטטיסטיקות כלליות על המערכת (כגון מספר הזמנות, מכירות וכו')
+  // Returns a summary of system-wide statistics (orders count, sales, etc.)
   static getStats = asyncHandler(async (req: Request, res: Response) => {
     const stats = await AdminService.getStatsSummary();
     res.json({ success: true, data: { stats } });

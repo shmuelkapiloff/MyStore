@@ -186,6 +186,8 @@ const definition = {
         properties: {
           _id: { type: "string" },
           user: { type: "string" },
+          fullName: { type: "string", description: "Recipient name" },
+          phone: { type: "string", description: "Contact phone (Israeli format)" },
           street: { type: "string" },
           city: { type: "string" },
           postalCode: { type: "string" },
@@ -199,11 +201,12 @@ const definition = {
       /* ── ShippingAddress (embedded) ────────── */
       ShippingAddress: {
         type: "object",
-        required: ["street", "city", "postalCode", "country"],
+        required: ["fullName", "phone", "street", "city", "postalCode", "country"],
         properties: {
+          fullName: { type: "string", description: "Recipient name" },
+          phone: { type: "string", description: "Contact phone (Israeli format)" },
           street: { type: "string" },
           city: { type: "string" },
-          state: { type: "string" },
           postalCode: { type: "string" },
           country: { type: "string" },
         },
@@ -1410,11 +1413,12 @@ const definition = {
             "application/json": {
               schema: {
                 type: "object",
-                required: ["street", "city", "postalCode", "country"],
+                required: ["fullName", "phone", "street", "city", "postalCode", "country"],
                 properties: {
+                  fullName: { type: "string", description: "Recipient name" },
+                  phone: { type: "string", description: "Contact phone (Israeli format)" },
                   street: { type: "string" },
                   city: { type: "string" },
-                  state: { type: "string" },
                   postalCode: { type: "string" },
                   country: { type: "string" },
                   isDefault: { type: "boolean" },
@@ -1481,10 +1485,12 @@ const definition = {
             "application/json": {
               schema: {
                 type: "object",
+                description: "All fields optional for partial update",
                 properties: {
+                  fullName: { type: "string" },
+                  phone: { type: "string" },
                   street: { type: "string" },
                   city: { type: "string" },
-                  state: { type: "string" },
                   postalCode: { type: "string" },
                   country: { type: "string" },
                   isDefault: { type: "boolean" },

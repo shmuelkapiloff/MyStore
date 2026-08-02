@@ -4,19 +4,19 @@ import { PaymentService } from "../services/payment.service";
 import { createOrderSchema } from "../validators/order.validator";
 import { asyncHandler, UnauthorizedError } from "../utils/asyncHandler";
 
-// קונטרולר לניהול הזמנות: יצירה, צפייה, מעקב וביטול
+// Handles order lifecycle: create, list, retrieve, track, and cancel
 export class OrderController {
   /**
    * Create new order
    * POST /api/orders
    *
    * Flow:
-   * 1. יצור order עם סטטוס "pending_payment"
-   * 2. יצור payment intent עבור Stripe
-   * 3. מחזיר clientSecret ל-CLIENT
-   * 4. CLIENT משלם דרך Stripe
-   * 5. Stripe שולח webhook
-   * 6. Server מאמת ועדכן order
+   * 1. Create order with status "pending_payment"
+   * 2. Create Stripe payment intent
+   * 3. Return clientSecret to the client
+   * 4. Client completes payment on Stripe
+   * 5. Stripe sends webhook to our server
+   * 6. Server verifies and marks order as fulfilled
    */
   static createOrder = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.userId;
@@ -54,7 +54,7 @@ export class OrderController {
   });
 
   /** GET /api/orders?status=pending */
-  // מחזיר את כל ההזמנות של המשתמש המחובר, עם אפשרות לסנן לפי סטטוס
+  // Returns all orders for the authenticated user, optionally filtered by status
   static getUserOrders = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.userId;
     const { status } = req.query;
@@ -66,7 +66,7 @@ export class OrderController {
   });
 
   /** GET /api/orders/:orderId */
-  // מחזיר הזמנה ספציפית של המשתמש לפי המזהה שלה
+  // Returns a specific order by ID, scoped to the authenticated user
   static getOrderById = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.userId;
     const { orderId } = req.params;
@@ -77,7 +77,7 @@ export class OrderController {
   });
 
   /** GET /api/orders/track/:orderId (public) */
-  // מאפשר מעקב אחר הזמנה לפי המזהה שלה, גם בלי להיות מחובר למערכת
+  // Public order tracking — no authentication required
   static trackOrder = asyncHandler(async (req: Request, res: Response) => {
     const { orderId } = req.params;
     const tracking = await OrderService.getOrderTracking(orderId);
@@ -85,7 +85,7 @@ export class OrderController {
   });
 
   /** POST /api/orders/:orderId/cancel */
-  // מבטל הזמנה קיימת של המשתמש
+  // Cancels an existing order belonging to the authenticated user
   static cancelOrder = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.userId;
     const { orderId } = req.params;

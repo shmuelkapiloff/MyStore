@@ -69,7 +69,7 @@ export class OrderService {
       });
 
       totalAmount += (item.lockedPrice || product.price) * item.quantity;
-      // ⚠️ לא משנים את המלאי כאן - רק אחרי שתשלום אושר!
+      // ⚠️ Stock is NOT reduced here — only after payment is confirmed via webhook!
     }
 
     // Generate order number
@@ -81,8 +81,8 @@ export class OrderService {
       user: userId,
       items: orderItems,
       totalAmount,
-      status: "pending_payment", // ← נחכה לתשלום
-      paymentStatus: "pending", // ← עדיין לא שולם
+      status: "pending_payment", // ← waiting for payment confirmation
+      paymentStatus: "pending", // ← not yet paid
       paymentMethod: orderData.paymentMethod || "stripe",
       shippingAddress: orderData.shippingAddress,
       notes: orderData.notes,
@@ -94,7 +94,7 @@ export class OrderService {
 
     const order = await OrderModel.create(createData);
 
-    // ⚠️ עדיין לא נקינו את העגלה - זה יקרה רק כשתשלום יאושר!
+    // ⚠️ Cart is NOT cleared here — that happens only after payment is confirmed!
 
     return order;
   }

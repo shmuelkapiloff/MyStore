@@ -5,7 +5,7 @@ import { asyncHandler } from "../utils/asyncHandler";
 import { log } from "../utils/logger";
 import { sendSuccess, sendError } from "../utils/response";
 
-// קונטרולר לטיפול בתשלומים: יצירת תשלום, בדיקת סטטוס, וקבלת עדכונים (webhooks) מ-Stripe
+// Handles payments: create intent, check status, and receive Stripe webhook events
 export class PaymentController {
   /**
    * Create payment intent
@@ -14,7 +14,7 @@ export class PaymentController {
    * Validated via validateRequest middleware with createPaymentIntentSchema
    * Body already validated: { orderId: string (valid MongoDB ObjectId) }
    */
-  // יוצר "כוונת תשלום" (payment intent) ב-Stripe בעבור הזמנה קיימת
+  // Creates a Stripe payment intent for an existing order
   static createIntent = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.userId;
     const { orderId } = req.body;
@@ -45,7 +45,7 @@ export class PaymentController {
    * Validated via validateRequest middleware with paymentStatusParamsSchema
    * Params already validated: { orderId: string (valid MongoDB ObjectId) }
    */
-  // מחזיר את סטטוס התשלום העדכני של הזמנה מסוימת
+  // Returns the current payment status for a given order
   static getStatus = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.userId;
     const { orderId } = req.params;
@@ -64,7 +64,7 @@ export class PaymentController {
    * POST /api/payments/webhook
    * ✅ This is the CRITICAL endpoint that confirms payments!
    */
-  // מקבל עדכונים אוטומטיים מ-Stripe על מצב התשלום - זו הנקודה הקריטית שמאשרת בפועל שהתשלום הצליח
+  // Receives Stripe webhook events — this is the critical endpoint that confirms payment success
   static webhook = asyncHandler(async (req: Request, res: Response) => {
     const startTime = Date.now();
     const rawBody = req.body;
@@ -100,14 +100,14 @@ export class PaymentController {
         error: errorMessage,
       });
 
-      // אם האירוע הזה כבר טופל בעבר (כפילות), מחזירים הצלחה כדי ש-Stripe לא ינסה לשלוח אותו שוב
+      // Duplicate event — return 200 so Stripe stops retrying
       if (errorMessage.includes("already processed")) {
         return res
           .status(200)
           .json({ received: true, message: "Duplicate event ignored" });
       }
 
-      // כשל באימות החתימה הוא בעיית הגדרה ולא תקלה זמנית, אז אין צורך ש-Stripe ינסה שוב
+      // Signature failure is a config error, not a transient one — return 400 so Stripe doesn't retry
       const isSignatureError =
         errorMessage.includes("Webhook signature verification failed") ||
         errorMessage.includes("Missing Stripe signature") ||
@@ -117,7 +117,7 @@ export class PaymentController {
         return res.status(400).json({ received: false, error: errorMessage });
       }
 
-      // שומר את ה-webhook שנכשל בטבלה נפרדת, כדי שיהיה אפשר לנסות לעבד אותו שוב מאוחר יותר
+      // Save the failed webhook for later retry
       try {
         const provider = process.env.PAYMENT_PROVIDER || "stripe";
         const eventId = rawBody?.id || `unknown-${Date.now()}`;
@@ -148,7 +148,7 @@ export class PaymentController {
         });
       }
 
-      // קוד תשובה 500 גורם ל-Stripe לנסות לשלוח את אותו webhook שוב בעתיד (תקלה זמנית בשרת)
+      // 500 tells Stripe this was a transient server error — it will retry automatically
       res.status(500).json({ received: false, error: errorMessage });
     }
   });

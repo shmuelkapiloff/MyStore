@@ -1,7 +1,7 @@
 import { Schema, model, InferSchemaType, Types } from "mongoose";
 import { ProductModel } from "./product.model";
 
-// Cart Item Schema - פריט בעגלה
+// Cart Item Schema
 const cartItemSchema = new Schema(
   {
     product: {
@@ -14,16 +14,16 @@ const cartItemSchema = new Schema(
       required: true,
       min: 1,
     },
-    // מחיר מנעול רק בזמן תשלום
+    // Price locked at checkout time; null while item is just in cart
     lockedPrice: {
       type: Number,
-      default: null, // null = משתמש בחנות, value = נעול בתשלום
+      default: null, // null = browsing, value = locked during checkout
     },
   },
   { _id: false },
 );
 
-// Cart Schema - עגלת קניות
+// Cart Schema
 const cartSchema = new Schema(
   {
     userId: {
@@ -72,7 +72,7 @@ cartSchema.pre("save", async function (next) {
 export interface ICartItem {
   product: Types.ObjectId;
   quantity: number;
-  lockedPrice: number | null; // null = משתמש בחנות, value = נעול בתשלום
+  lockedPrice: number | null; // null = browsing, value = locked during checkout
 }
 
 export type ICart = InferSchemaType<typeof cartSchema>;

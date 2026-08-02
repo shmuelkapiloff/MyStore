@@ -13,22 +13,22 @@ const router = Router();
 router.use(requireAuth);
 router.use(apiRateLimiter);
 
-// GET /api/cart - קבלת עגלה נוכחית
+// GET /api/cart - get current cart
 router.get("/", CartController.getCart);
 
-// GET /api/cart/count - ספירת פריטים בעגלה
-router.get("/count",     CartController.getCartCount);
+// GET /api/cart/count - total item count (for cart icon badge)
+router.get("/count", CartController.getCartCount);
 
-// POST /api/cart/add - הוספת פריט לעגלה
+// POST /api/cart/add - add item to cart
 router.post("/add", CartController.addToCart);
 
-// PUT /api/cart/update - עדכון כמות פריט
-router.put("/update",  CartController.updateQuantity);
+// PUT /api/cart/update - update item quantity
+router.put("/update", CartController.updateQuantity);
 
-// DELETE /api/cart/remove - הסרת פריט מעגלה
+// DELETE /api/cart/remove - remove item from cart
 router.delete("/remove", CartController.removeFromCart);
 
-// DELETE /api/cart/clear - ניקוי עגלה מלאה
+// DELETE /api/cart/clear - clear entire cart
 router.delete("/clear", CartController.clearCart);
 
 export default router;

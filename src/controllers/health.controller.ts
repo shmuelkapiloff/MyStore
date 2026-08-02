@@ -5,9 +5,9 @@ import { FailedWebhookModel } from "../models/failed-webhook.model";
 import { WebhookEventModel } from "../models/webhook-event.model";
 import { asyncHandler } from "../utils/asyncHandler";
 
-// קונטרולר שבודק את מצב התקינות (health) של השרת והשירותים שהוא תלוי בהם
+// Reports server health: database connections, Redis status, and webhook metrics
 export class HealthController {
-  // בודק את החיבור למסדי הנתונים (MongoDB, Redis) ואת מצב ה-webhooks, ומחזיר דוח תקינות כללי
+  // Checks MongoDB + Redis connectivity and webhook stats, returns overall health report
   static getHealth = asyncHandler(async (_req: Request, res: Response) => {
     const mongoOk = mongoose.connection.readyState === 1;
     const redisOk = redis.status === "ready";
@@ -15,7 +15,7 @@ export class HealthController {
     const webhookSecretConfigured = !!process.env.STRIPE_WEBHOOK_SECRET;
     const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-    // סופר כמה webhooks התקבלו ב-24 השעות האחרונות וכמה נכשלו וממתינים לטיפול
+    // Count webhooks received in the last 24h and how many failed and are pending retry
     const recentWebhooks = await WebhookEventModel.countDocuments({
       processedAt: { $gte: last24h },
     });
@@ -23,7 +23,7 @@ export class HealthController {
       status: "pending",
     });
 
-    // אם אחד מהשירותים החיוניים לא תקין, המצב הכללי נחשב "פגום" (degraded)
+    // If any critical service is down, overall status is "degraded"
     const degraded = !(mongoOk && redisOk);
 
     res.json({
@@ -48,7 +48,7 @@ export class HealthController {
     });
   });
 
-  // בדיקת חיים פשוטה - מחזיר תשובה מיידית שמאשרת שהשרת פעיל ומגיב
+  // Simple liveness check — returns immediately to confirm the server is up
   static ping = asyncHandler(async (_req: Request, res: Response) => {
     res.json({
       success: true,

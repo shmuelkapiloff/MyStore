@@ -5,9 +5,9 @@ import { logger } from "../utils/logger";
 import { asyncHandler } from "../utils/asyncHandler";
 import mongoose from "mongoose";
 
-// קונטרולר לניהול עגלת הקניות של המשתמש
+// Handles cart operations for the authenticated user
 export class CartController {
-  // מחזיר את עגלת הקניות של המשתמש המחובר, או עגלה ריקה אם אין לו עגלה עדיין
+  // Returns the user's cart, or an empty cart if none exists yet
   static getCart = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.userId; // From auth middleware
 
@@ -32,7 +32,7 @@ export class CartController {
     sendSuccess(res, cart);
   });
 
-  // מוסיף מוצר לעגלת הקניות, אחרי בדיקת תקינות הנתונים שהתקבלו
+  // Adds a product to the cart after input validation
   static addToCart = asyncHandler(async (req: Request, res: Response) => {
     const { productId, quantity } = req.body;
     const userId = req.userId; // From auth middleware
@@ -42,7 +42,7 @@ export class CartController {
       return;
     }
 
-    // בדיקות תקינות: שדות חובה קיימים, מזהה המוצר בפורמט תקין, והכמות חיובית
+    // Validate: required fields present, valid ObjectId format, positive quantity
     if (!productId || !quantity) {
       sendError(res, 400, "Missing required fields: productId and quantity");
       return;
@@ -65,7 +65,7 @@ export class CartController {
     sendSuccess(res, cart, "Item added to cart");
   });
 
-  // מעדכן את הכמות של מוצר קיים בעגלה
+  // Updates the quantity of an item already in the cart
   static updateQuantity = asyncHandler(async (req: Request, res: Response) => {
     const { productId, quantity } = req.body;
     const userId = req.userId; // From auth middleware
@@ -92,7 +92,7 @@ export class CartController {
     sendSuccess(res, cart, "Quantity updated");
   });
 
-  // מסיר מוצר מסוים מעגלת הקניות
+  // Removes a specific product from the cart
   static removeFromCart = asyncHandler(async (req: Request, res: Response) => {
     const { productId } = req.body;
     const userId = req.userId; // From auth middleware
@@ -119,7 +119,7 @@ export class CartController {
     sendSuccess(res, cart, "Item removed from cart");
   });
 
-  // מנקה את כל הפריטים מעגלת הקניות של המשתמש
+  // Clears all items from the user's cart
   static clearCart = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.userId; // From auth middleware
 
@@ -140,7 +140,7 @@ export class CartController {
     sendSuccess(res, { userId, items: [], total: 0 }, "Cart cleared");
   });
 
-  // מחזיר את מספר הפריטים הכולל בעגלה (שימושי למשל לתצוגה על אייקון העגלה)
+  // Returns total item count in the cart (useful for cart icon badge)
   static getCartCount = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.userId; // From auth middleware
 
@@ -150,7 +150,7 @@ export class CartController {
     }
 
     const cart = await CartService.getCart(userId);
-    // סוכם את הכמויות של כל הפריטים בעגלה למספר אחד
+    // Sum quantities across all cart items
     const count = cart
       ? cart.items.reduce((sum: number, item: any) => sum + item.quantity, 0)
       : 0;

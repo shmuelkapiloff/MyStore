@@ -7,12 +7,12 @@ import {
 } from "../services/product.service";
 import { asyncHandler, NotFoundError } from "../utils/asyncHandler";
 
-// קונטרולר ציבורי לקריאת מידע על מוצרים (אינו דורש התחברות)
+// Public read-only product controller — no authentication required
 export class ProductController {
   /** GET /api/products */
-  // מחזיר רשימת מוצרים עם אפשרות לסנן לפי קטגוריה, טווח מחירים, חיפוש טקסט והדגשה (featured)
+  // Returns products, with optional filters: category, price range, text search, featured
   static getProducts = asyncHandler(async (req: Request, res: Response) => {
-    // בניית אובייקט הסינון מתוך פרמטרי השאילתה (query) שהתקבלו בכתובת ה-URL
+    // Build filter object from URL query parameters
     const filters: ProductFilters = {
       category: req.query.category as string,
       minPrice: req.query.minPrice
@@ -36,7 +36,7 @@ export class ProductController {
   });
 
   /** GET /api/products/:id */
-  // מחזיר מוצר בודד לפי המזהה שלו, או שגיאה אם המוצר לא נמצא
+  // Returns a single product by ID, or 404 if not found
   static getProduct = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
     const product = await getProductById(id);
@@ -45,7 +45,7 @@ export class ProductController {
   });
 
   /** GET /api/products/categories/list */
-  // מחזיר רשימה של כל הקטגוריות הקיימות במוצרים
+  // Returns the list of all distinct product categories
   static getCategoriesList = asyncHandler(
     async (_req: Request, res: Response) => {
       const categories = await getCategories();

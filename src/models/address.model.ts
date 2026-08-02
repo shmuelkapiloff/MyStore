@@ -5,8 +5,8 @@ const PHONE_REGEX = /^(\+972|0)([23489]|5[0-9])[0-9]{7}$/;
 
 export interface IAddress extends Document {
   user: string;
-  fullName: string; // שם מקבל החבילה (חובה!)
-  phone: string; // טלפון ליצירת קשר (חובה!)
+  fullName: string; // recipient name (required)
+  phone: string; // contact phone (required)
   street: string;
   city: string;
   postalCode: string;
