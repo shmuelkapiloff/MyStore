@@ -9,6 +9,8 @@ import crypto from "crypto";
 import nodemailer from "nodemailer";
 import { logger } from "../utils/logger";
 import {
+  AUTH_MAX_ATTEMPTS,
+  AUTH_WINDOW_MS,
   JWT_EXPIRATION,
   JWT_REFRESH_EXPIRATION,
   PASSWORD_RESET_EXPIRATION,
@@ -47,7 +49,7 @@ export async function updateUserGoogleId(userId: string, googleId: string) {
 }
 
 export class AuthService {
-  // ── Google OAuth: public wrappers for private token/sanitize methods ────
+  // Google OAuth: public wrappers for private token/sanitize methods
   static createToken(userId: string, tokenVersion: number = 0): string {
     return this.generateToken(userId, tokenVersion);
   }
@@ -62,7 +64,7 @@ export class AuthService {
 
   /**
    * ==========================================
-   * 🔓 PUBLIC METHODS (No auth required)
+   * PUBLIC METHODS (No auth required)
    * ==========================================
    */
 
@@ -119,7 +121,7 @@ export class AuthService {
       throw new UnauthorizedError("Invalid email or password");
     }
 
-    // 🔒 Check if account is locked
+    // Check if account is locked
     if (user.lockedUntil && new Date() < user.lockedUntil) {
       const remainingMinutes = Math.ceil(
         (user.lockedUntil.getTime() - Date.now()) / 60000,
@@ -130,7 +132,7 @@ export class AuthService {
           lockedUntil: user.lockedUntil,
           remainingMinutes,
         },
-        "🔒 Account locked - login attempt blocked",
+        "Account locked - login attempt blocked",
       );
       throw new ApiError(
         423,
@@ -143,13 +145,13 @@ export class AuthService {
     // Verify password
     const isPasswordValid = await user.comparePassword(credentials.password);
     if (!isPasswordValid) {
-      // ❌ Increment failed login attempts
+      // Increment failed login attempts
       user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
 
-      // 🔓 Check if we should lock the account (5 failed attempts)
-      if (user.failedLoginAttempts >= 5) {
+      // Check if we should lock the account (max failed attempts)
+      if (user.failedLoginAttempts >= AUTH_MAX_ATTEMPTS) {
         // Lock account for 15 minutes
-        user.lockedUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+        user.lockedUntil = new Date(Date.now() + AUTH_WINDOW_MS); // 15 minutes
         await user.save();
 
         logger.error(
@@ -158,7 +160,7 @@ export class AuthService {
             failedLoginAttempts: user.failedLoginAttempts,
             lockedUntil: user.lockedUntil,
           },
-          "🔒 Account locked - too many failed login attempts",
+          "Account locked - too many failed login attempts",
         );
 
         throw new ApiError(
@@ -171,22 +173,20 @@ export class AuthService {
 
       await user.save();
 
-      const remainingAttempts = 5 - user.failedLoginAttempts;
+      const remainingAttempts = AUTH_MAX_ATTEMPTS - user.failedLoginAttempts;
       logger.warn(
         {
           email: user.email,
           failedLoginAttempts: user.failedLoginAttempts,
           remainingAttempts,
         },
-        "⚠️ Failed login attempt",
+        "Failed login attempt",
       );
 
-      throw new UnauthorizedError(
-        `Invalid email or password. ${remainingAttempts} attempts remaining before account lockout.`,
-      );
+      throw new UnauthorizedError("Invalid email or password");
     }
 
-    // ✅ Login successful - reset failed attempts
+    // Login successful - reset failed attempts
     user.failedLoginAttempts = 0;
     user.lockedUntil = null;
 
@@ -203,13 +203,13 @@ export class AuthService {
         email: user.email,
         userId: user._id,
       },
-      "✅ User login successful",
+      "User login successful",
     );
 
     return {
       user: this.sanitizeUser(user),
       token,
-      refreshToken, // ⚠️ Long-lived refresh token (7 days)
+      refreshToken, // Long-lived refresh token (7 days)
     };
   }
 
@@ -270,7 +270,7 @@ export class AuthService {
     }
 
     return {
-      message: "Password reset link has been sent to your email",
+      message: "If this email exists, a password reset link has been sent",
       ...(includeTokenInResponse ? { resetToken } : {}),
     };
   }
@@ -356,7 +356,7 @@ export class AuthService {
     // Update password (will be hashed by pre-save middleware)
     user.password = newPassword;
     user.lastUpdated = new Date();
-    // ✨ Increment tokenVersion: all existing sessions are revoked on password change
+    // Increment tokenVersion: all existing sessions are revoked on password change
     user.tokenVersion = (user.tokenVersion || 0) + 1;
     await user.save();
 
@@ -376,13 +376,13 @@ export class AuthService {
       throw new Error("User not found");
     }
 
-    // ✨ Increment version = all existing tokens (access + refresh) are instantly invalid
+    // Increment version = all existing tokens (access + refresh) are instantly invalid
     user.tokenVersion = (user.tokenVersion || 0) + 1;
     await user.save();
 
     logger.info(
       { userId, tokenVersion: user.tokenVersion },
-      "🚪 User logged out - all tokens revoked",
+      "User logged out - all tokens revoked",
     );
 
     return { message: "Logged out successfully - all sessions revoked" };
@@ -390,7 +390,7 @@ export class AuthService {
 
   /**
    * ==========================================
-   * � PROTECTED METHODS (Auth required)
+   * PROTECTED METHODS (Auth required)
    * ==========================================
    */
 
@@ -409,7 +409,7 @@ export class AuthService {
         throw new Error("Invalid token");
       }
 
-      // ✨ Token Version check: if user logged out, version incremented and old tokens are invalid
+      // Token Version check: if user logged out, version incremented and old tokens are invalid
       if (
         decoded.tokenVersion !== undefined &&
         decoded.tokenVersion !== user.tokenVersion
@@ -438,7 +438,7 @@ export class AuthService {
 
   /**
    * ==========================================
-   * �🛠️ HELPER METHODS
+   * HELPER METHODS
    * ==========================================
    */
 
@@ -457,7 +457,7 @@ export class AuthService {
      */
     // If SMTP credentials are not configured, skip sending and log for local/dev
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
-      logger.info("⚠️ EMAIL_USER/EMAIL_PASSWORD not set - skipping email send");
+      logger.info("EMAIL_USER/EMAIL_PASSWORD not set - skipping email send");
       logger.info(`Reset URL for ${to}: ${resetUrl}`);
       return;
     }
@@ -567,7 +567,7 @@ export class AuthService {
         throw new UnauthorizedError("User not found or inactive");
       }
 
-      // ✨ Token Version check: reject refresh if user logged out
+      // Token Version check: reject refresh if user logged out
       if (
         decoded.tokenVersion !== undefined &&
         decoded.tokenVersion !== user.tokenVersion
